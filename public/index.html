@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BFHL Graph Processor</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>BFHL Graph Processor</h1>
+        
+        <div class="input-section">
+            <label for="data-input">Enter Node Array (JSON format):</label>
+            <textarea id="data-input" rows="5">["A->B", "A->C", "B->D", "C->E", "E->F", "X->Y", "Y->Z", "Z->X", "P->Q", "Q->R", "G->H", "G->H", "G->I", "hello", "1->2", "A->"]</textarea>
+            <button id="submit-btn">Process Graph</button>
+        </div>
+
+        <div id="error-message" class="error hidden"></div>
+
+        <div id="results-section" class="results-section hidden">
+            <h2>Results</h2>
+            
+            <div class="user-details card">
+                <h3>User Details</h3>
+                <p><strong>ID:</strong> <span id="res-user-id"></span></p>
+                <p><strong>Email:</strong> <span id="res-email"></span></p>
+                <p><strong>Roll Number:</strong> <span id="res-roll"></span></p>
+            </div>
+
+            <div class="summary card">
+                <h3>Summary</h3>
+                <p><strong>Total Valid Trees:</strong> <span id="res-total-trees"></span></p>
+                <p><strong>Total Cycles:</strong> <span id="res-total-cycles"></span></p>
+                <p><strong>Largest Tree Root:</strong> <span id="res-largest-root"></span></p>
+            </div>
+
+            <div class="issues card">
+                <h3>Issues</h3>
+                <p><strong>Invalid Entries:</strong> <span id="res-invalid"></span></p>
+                <p><strong>Duplicate Edges:</strong> <span id="res-duplicates"></span></p>
+            </div>
+
+            <div class="hierarchies card">
+                <h3>Hierarchies</h3>
+                <pre id="res-hierarchies"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('submit-btn').addEventListener('click', async () => {
+            const inputVal = document.getElementById('data-input').value;
+            const errorDiv = document.getElementById('error-message');
+            const resultsSection = document.getElementById('results-section');
+            
+            errorDiv.classList.add('hidden');
+            resultsSection.classList.add('hidden');
+            
+            let parsedData;
+            try {
+                parsedData = JSON.parse(inputVal);
+                if (!Array.isArray(parsedData)) {
+                    throw new Error("Input must be a JSON array of strings.");
+                }
+            } catch (e) {
+                errorDiv.textContent = "Invalid JSON format. Please provide an array like [\"A->B\", \"C->D\"]";
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/bfhl', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ data: parsedData })
+                });
+                
+                if (!response.ok) {
+                    throw new Error("API call failed with status " + response.status);
+                }
+                
+                const data = await response.json();
+                
+                document.getElementById('res-user-id').textContent = data.user_id;
+                document.getElementById('res-email').textContent = data.email_id;
+                document.getElementById('res-roll').textContent = data.college_roll_number;
+                
+                document.getElementById('res-total-trees').textContent = data.summary.total_trees;
+                document.getElementById('res-total-cycles').textContent = data.summary.total_cycles;
+                document.getElementById('res-largest-root').textContent = data.summary.largest_tree_root || "N/A";
+                
+                document.getElementById('res-invalid').textContent = data.invalid_entries.length > 0 ? data.invalid_entries.join(', ') : "None";
+                document.getElementById('res-duplicates').textContent = data.duplicate_edges.length > 0 ? data.duplicate_edges.join(', ') : "None";
+                
+                document.getElementById('res-hierarchies').textContent = JSON.stringify(data.hierarchies, null, 2);
+                
+                resultsSection.classList.remove('hidden');
+            } catch (e) {
+                errorDiv.textContent = "Error: " + e.message;
+                errorDiv.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
